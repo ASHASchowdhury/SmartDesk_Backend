@@ -10,6 +10,8 @@ public class TaskResponseDTO {
     private Integer estimatedHours;
     private Long assignedToId;
     private boolean deleted;
+    private Boolean started;
+    private Boolean completed;
 
     public TaskResponseDTO() {}
 
@@ -40,4 +42,10 @@ public class TaskResponseDTO {
 
     public boolean isDeleted() { return deleted; }
     public void setDeleted(boolean deleted) { this.deleted = deleted; }
+
+    public Boolean getStarted() { return started; }
+    public void setStarted(Boolean started) { this.started = started; }
+
+    public Boolean getCompleted() { return completed; }
+    public void setCompleted(Boolean completed) { this.completed = completed; }
 }

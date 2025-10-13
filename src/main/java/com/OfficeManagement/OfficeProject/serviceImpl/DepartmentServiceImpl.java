@@ -1,4 +1,3 @@
-// File: src/main/java/com/OfficeManagement/OfficeProject/services/DepartmentServiceImpl.java
 package com.OfficeManagement.OfficeProject.services;
 
 import com.OfficeManagement.OfficeProject.dtos.DepartmentDTO;
@@ -7,6 +6,7 @@ import com.OfficeManagement.OfficeProject.models.Employee;
 import com.OfficeManagement.OfficeProject.repository.DepartmentRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,7 +51,7 @@ public class DepartmentServiceImpl implements DepartmentService {
         department.setName(departmentDTO.getName());
         department.setDescription(departmentDTO.getDescription());
         department.setCreatedBy(departmentDTO.getCreatedBy());
-        // Don't set createdDate here - let auditing handle it
+        // createdDate will be set manually in save method
 
         return department;
     }
@@ -81,58 +81,83 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     public DepartmentDTO saveDepartment(DepartmentDTO departmentDTO) {
-        if (departmentDTO.getCreatedBy() == null || departmentDTO.getCreatedBy().trim().isEmpty()) {
-            departmentDTO.setCreatedBy("admin");
-        }
+        try {
+            // Set default values
+            if (departmentDTO.getCreatedBy() == null || departmentDTO.getCreatedBy().trim().isEmpty()) {
+                departmentDTO.setCreatedBy("admin");
+            }
 
-        if (departmentDTO.getDeptId() == null || departmentDTO.getDeptId().trim().isEmpty()) {
-            String generatedDeptId = generateDeptId();
-            departmentDTO.setDeptId(generatedDeptId);
-        }
+            if (departmentDTO.getDeptId() == null || departmentDTO.getDeptId().trim().isEmpty()) {
+                String generatedDeptId = generateDeptId();
+                departmentDTO.setDeptId(generatedDeptId);
+            }
 
-        Department department = convertToEntity(departmentDTO);
-        Department saved = departmentRepository.save(department);
-        return convertToDTO(saved);
+            Department department = convertToEntity(departmentDTO);
+
+            // MANUALLY SET THE CREATED DATE
+            department.setCreatedDate(LocalDateTime.now());
+
+            Department saved = departmentRepository.save(department);
+            return convertToDTO(saved);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save department: " + e.getMessage());
+        }
     }
 
     @Override
     public DepartmentDTO updateDepartment(Long id, DepartmentDTO departmentDTO) {
-        Department existingDepartment = departmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
+        try {
+            Department existingDepartment = departmentRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
 
-        // Only update if provided (allows partial updates)
-        if (departmentDTO.getName() != null && !departmentDTO.getName().trim().isEmpty()) {
-            existingDepartment.setName(departmentDTO.getName());
-        }
-        if (departmentDTO.getDescription() != null) {
-            existingDepartment.setDescription(departmentDTO.getDescription());
-        }
-        // Don't update deptId in updates typically
+            // Only update if provided (allows partial updates)
+            if (departmentDTO.getName() != null && !departmentDTO.getName().trim().isEmpty()) {
+                existingDepartment.setName(departmentDTO.getName());
+            }
+            if (departmentDTO.getDescription() != null) {
+                existingDepartment.setDescription(departmentDTO.getDescription());
+            }
+            // Don't update deptId in updates typically
 
-        Department updated = departmentRepository.save(existingDepartment);
-        return convertToDTO(updated);
+            Department updated = departmentRepository.save(existingDepartment);
+            return convertToDTO(updated);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update department: " + e.getMessage());
+        }
     }
 
     @Override
     public List<DepartmentDTO> getAllDepartment() {
-        return departmentRepository.findAll()
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        try {
+            return departmentRepository.findAll()
+                    .stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get departments: " + e.getMessage());
+        }
     }
 
     @Override
     public DepartmentDTO getDepartmentById(Long id) {
-        Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
-        return convertToDTO(department);
+        try {
+            Department department = departmentRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
+            return convertToDTO(department);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get department: " + e.getMessage());
+        }
     }
 
     @Override
     public void deleteDepartment(Long id) {
-        if (!departmentRepository.existsById(id)) {
-            throw new RuntimeException("Department not found with id: " + id);
+        try {
+            if (!departmentRepository.existsById(id)) {
+                throw new RuntimeException("Department not found with id: " + id);
+            }
+            departmentRepository.deleteById(id);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete department: " + e.getMessage());
         }
-        departmentRepository.deleteById(id);
     }
 }

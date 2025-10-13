@@ -2,17 +2,11 @@ package com.OfficeManagement.OfficeProject.models;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
 @Table(name = "departments")
-@EntityListeners(AuditingEntityListener.class)
 public class Department {
 
     @Id
@@ -28,13 +22,11 @@ public class Department {
     @Column(name = "description")
     private String description;
 
-
     @Column(name = "created_by")
     private String createdBy;
 
-    @CreatedDate
     @Column(name = "created_date", nullable = false, updatable = false)
-    private LocalDate createdDate;
+    private LocalDateTime createdDate;
 
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL)
     @JsonManagedReference
@@ -68,8 +60,8 @@ public class Department {
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
-    public LocalDate getCreatedDate() { return createdDate; }
-    public void setCreatedDate(LocalDate createdDate) { this.createdDate = createdDate; }
+    public LocalDateTime getCreatedDate() { return createdDate; }
+    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
 
     public List<Employee> getEmployees() { return employees; }
     public void setEmployees(List<Employee> employees) { this.employees = employees; }

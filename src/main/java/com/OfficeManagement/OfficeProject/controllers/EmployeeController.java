@@ -15,13 +15,15 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:3000")
 public class EmployeeController {
 
-    private  final EmployeeService employeeService;
+    private final EmployeeService employeeService;
     private DepartmentRepository departmentRepository;
-    public EmployeeController(EmployeeService employeeService) {
 
+    // Constructor - gets EmployeeService injected automatically
+    public EmployeeController(EmployeeService employeeService) {
         this.employeeService = employeeService;
     }
 
+    // Create a new employee - returns success message or error
     @PostMapping
     public ResponseEntity<String> createEmployee(@RequestBody EmployeeDTO employeeDTO) {
         try {
@@ -32,18 +34,19 @@ public class EmployeeController {
         }
     }
 
+    // Get a single employee by ID
     @GetMapping("/{id}")
     public EmployeeDTO getEmployeeById(@PathVariable Long id){
-
         return employeeService.getEmployeeById(id);
     }
 
+    // Get all employees
     @GetMapping
     public List<EmployeeDTO> getAllEmployee(){
-
         return employeeService.getAllEmployee();
     }
 
+    // Update an existing employee - returns success message or error
     @PutMapping("/{id}")
     public ResponseEntity<String> updateEmployee(@PathVariable Long id, @RequestBody EmployeeDTO employeeDTO) {
         try {
@@ -54,9 +57,9 @@ public class EmployeeController {
         }
     }
 
+    // Delete an employee by ID
     @DeleteMapping("/{id}")
     public void deleteEmployee(@PathVariable Long id){
         employeeService.deleteEmployee(id);
     }
-
 }

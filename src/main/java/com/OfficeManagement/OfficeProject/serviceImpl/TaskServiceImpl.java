@@ -30,6 +30,11 @@ public class TaskServiceImpl implements TaskService {
         task.setEstimatedHours(dto.getEstimatedHours());
         task.setAssignedToId(dto.getAssignedToId());
         task.setStatus("PENDING");
+
+        // CHANGED: Handle Boolean fields safely
+        task.setStarted(dto.getStarted() != null ? dto.getStarted() : false);
+        task.setCompleted(dto.getCompleted() != null ? dto.getCompleted() : false);
+
         return task;
     }
 
@@ -45,6 +50,11 @@ public class TaskServiceImpl implements TaskService {
         dto.setEstimatedHours(task.getEstimatedHours());
         dto.setAssignedToId(task.getAssignedToId());
         dto.setDeleted(task.isDeleted());
+
+        // CHANGED: Use Boolean getters
+        dto.setStarted(task.getStarted());
+        dto.setCompleted(task.getCompleted());
+
         return dto;
     }
 
@@ -102,6 +112,14 @@ public class TaskServiceImpl implements TaskService {
         }
         if (taskRequestDTO.getAssignedToId() != null) {
             existingTask.setAssignedToId(taskRequestDTO.getAssignedToId());
+        }
+
+        // CHANGED: Update Boolean fields
+        if (taskRequestDTO.getStarted() != null) {
+            existingTask.setStarted(taskRequestDTO.getStarted());
+        }
+        if (taskRequestDTO.getCompleted() != null) {
+            existingTask.setCompleted(taskRequestDTO.getCompleted());
         }
 
         Task updatedTask = taskRepository.save(existingTask);
