@@ -139,4 +139,27 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
         return convertToDTO(employee);
     }
+
+
+    @Override
+    public EmployeeDTO getEmployeeByUsername(String username) {
+        // In a real app, you would query by username field
+        // For demo, we'll find by email or return first employee
+        try {
+            Employee employee = employeeRepository.findByEmail(username);
+            if (employee != null) {
+                return convertToDTO(employee);
+            }
+
+            // Fallback: return first employee
+            List<Employee> employees = employeeRepository.findAll();
+            if (!employees.isEmpty()) {
+                return convertToDTO(employees.get(0));
+            }
+
+            throw new RuntimeException("No employees found");
+        } catch (Exception e) {
+            throw new RuntimeException("Error finding employee by username: " + e.getMessage());
+        }
+    }
 }

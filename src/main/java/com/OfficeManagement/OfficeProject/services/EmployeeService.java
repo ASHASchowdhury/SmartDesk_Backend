@@ -9,4 +9,6 @@ public interface EmployeeService {
     void deleteEmployee(Long id);
     List<EmployeeDTO> getAllEmployee();
     EmployeeDTO getEmployeeById(Long id);
+
+    EmployeeDTO getEmployeeByUsername(String username);
 }
