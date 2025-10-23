@@ -19,42 +19,46 @@ import java.util.List;
 public class RoleBasedFilter extends OncePerRequestFilter {
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        // Exclude WebSocket endpoints from this filter
+        return path.startsWith("/ws-chat") || path.contains("websocket");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String username = request.getHeader("X-Username");
         String role = request.getHeader("X-Role");
 
-        System.out.println("RoleBasedFilter - Path: " + request.getServletPath() +
-                ", Username: " + username + ", Role: " + role);
+        System.out.println("RoleBasedFilter - Path: " + request.getServletPath() + ", Role: " + role);
 
-        // Handle missing headers - provide sensible defaults
-        if (username == null || role == null) {
-            username = "default-user";
-            role = "USER"; // Default role
+        // Skip if no role header (for WebSocket, public endpoints)
+        if (role == null) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // Set UserContext
+        // Generate username from role (or use role as identifier)
+        String username = role.toLowerCase() + "-user";
+
+        // Set UserContext with role only
         UserContext.setCurrentUser(username, role);
 
-        // CREATE SPRING SECURITY AUTHENTICATION
-        if (username != null && role != null) {
-            // Ensure role has ROLE_ prefix for Spring Security
-            String springRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        // Create Spring Security Authentication with role only
+        String springRole = role.startsWith("ROLE_") ? role : "ROLE_" + role;
 
-            List<SimpleGrantedAuthority> authorities = Collections.singletonList(
-                    new SimpleGrantedAuthority(springRole)
-            );
+        List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                new SimpleGrantedAuthority(springRole)
+        );
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(username, null, authorities);
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            System.out.println("Spring Security Authentication set for: " +
-                    username + " with role: " + springRole);
-        }
+        System.out.println("Spring Security Authentication set for role: " + springRole);
 
         try {
             filterChain.doFilter(request, response);

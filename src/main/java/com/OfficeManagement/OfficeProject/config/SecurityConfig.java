@@ -28,19 +28,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // PUBLIC ENDPOINTS - No authentication required
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/ai/**").permitAll()  // Allow AI without authentication
-                        .requestMatchers("/error").permitAll()
-
-                        // PROTECTED ENDPOINTS - Role-based access
-                        .requestMatchers("/departments/**").hasAnyRole("HR", "DIRECTOR", "CTO")
-                        .requestMatchers("/employees/**").hasAnyRole("HR", "DIRECTOR", "CTO", "PROJECT_MANAGER")
-                        .requestMatchers("/tasks/**").hasAnyRole("PROJECT_MANAGER", "CTO", "DIRECTOR")
-                        .requestMatchers("/profile/**").authenticated()
-
-                        // Any other request needs authentication
-                        .anyRequest().authenticated()
+                        // ALLOW EVERYTHING FOR ALL ROLES
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(roleBasedFilter, UsernamePasswordAuthenticationFilter.class);
 
