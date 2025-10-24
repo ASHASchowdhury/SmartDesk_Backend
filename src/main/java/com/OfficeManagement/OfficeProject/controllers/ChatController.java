@@ -29,22 +29,35 @@ public class ChatController {
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload ChatMessageDTO messageDTO) {
-        // Get role from UserContext (set by RoleBasedFilter)
         String role = UserContext.getCurrentRole();
+        String username = UserContext.getCurrentUsername();
 
         if (role == null) {
-            role = "USER"; // Default role if not set
-            System.out.println("No role found in UserContext, using default: " + role);
+            role = "USER";
         }
 
-        // Remove ROLE_ prefix if present
+        if (username == null) {
+            username = messageDTO.getSenderName();
+            if (username == null) {
+                username = getDefaultNameFromRole(role);
+            }
+        }
+
         if (role.startsWith("ROLE_")) {
             role = role.replace("ROLE_", "");
         }
 
-        System.out.println("Sending chat message with role: " + role);
+        chatService.sendMessage(messageDTO, role, username);
+    }
 
-        // Send message with role from RoleBasedFilter
-        chatService.sendMessage(messageDTO, role);
+    private String getDefaultNameFromRole(String role) {
+        switch (role.toUpperCase()) {
+            case "DIRECTOR": return "Director";
+            case "HR": return "HR Manager";
+            case "CTO": return "CTO";
+            case "PROJECT_MANAGER": return "Project Manager";
+            case "USER": return "Team Member";
+            default: return role;
+        }
     }
 }

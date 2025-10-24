@@ -11,16 +11,17 @@ public class ChatMessage {
     private Long id;
 
     private String content;
-    private String senderRole;    // Only role, no username
+    private String senderRole;
+    private String senderName;
     private LocalDateTime timestamp;
     private Long roomId;
 
     public ChatMessage() {}
 
-    // Constructor with only role
-    public ChatMessage(String content, String senderRole, Long roomId) {
+    public ChatMessage(String content, String senderRole, String senderName, Long roomId) {
         this.content = content;
         this.senderRole = senderRole;
+        this.senderName = senderName;
         this.roomId = roomId;
         this.timestamp = LocalDateTime.now();
     }
@@ -34,6 +35,9 @@ public class ChatMessage {
 
     public String getSenderRole() { return senderRole; }
     public void setSenderRole(String senderRole) { this.senderRole = senderRole; }
+
+    public String getSenderName() { return senderName; }
+    public void setSenderName(String senderName) { this.senderName = senderName; }
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }

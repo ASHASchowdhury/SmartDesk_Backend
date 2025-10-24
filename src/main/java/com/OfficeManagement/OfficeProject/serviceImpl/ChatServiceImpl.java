@@ -23,26 +23,19 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public ChatMessageDTO sendMessage(ChatMessageDTO messageDTO, String senderRole) {
-        // Create message with role from RoleBasedFilter
+    public ChatMessageDTO sendMessage(ChatMessageDTO messageDTO, String senderRole, String senderName) {
         ChatMessage message = new ChatMessage(
                 messageDTO.getContent(),
-                senderRole,        // Role from UserContext
+                senderRole,
+                senderName,
                 messageDTO.getRoomId()
         );
 
-        // Save to database
         ChatMessage savedMessage = chatMessageRepository.save(message);
-
-        // Convert to DTO
         ChatMessageDTO savedDTO = convertToDTO(savedMessage);
 
-        // Send real-time update
         String topic = "/topic/chat/" + messageDTO.getRoomId();
         messagingTemplate.convertAndSend(topic, savedDTO);
-
-        System.out.println("Message sent to room " + messageDTO.getRoomId() +
-                " from role: " + senderRole);
 
         return savedDTO;
     }
@@ -69,7 +62,8 @@ public class ChatServiceImpl implements ChatService {
         dto.setId(message.getId());
         dto.setContent(message.getContent());
         dto.setRoomId(message.getRoomId());
-        dto.setSenderRole(message.getSenderRole()); // Only role
+        dto.setSenderRole(message.getSenderRole());
+        dto.setSenderName(message.getSenderName());
         dto.setTimestamp(message.getTimestamp());
         return dto;
     }

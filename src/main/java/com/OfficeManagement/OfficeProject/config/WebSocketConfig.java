@@ -1,4 +1,3 @@
-// src/main/java/com/OfficeManagement/OfficeProject/config/WebSocketConfig.java
 package com.OfficeManagement.OfficeProject.config;
 
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +10,13 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+
+    // Inject the interceptor
+    public WebSocketConfig(WebSocketAuthInterceptor webSocketAuthInterceptor) {
+        this.webSocketAuthInterceptor = webSocketAuthInterceptor;
+    }
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         config.setApplicationDestinationPrefixes("/app");
@@ -19,13 +25,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Allow both SockJS and native WebSocket
+        // Allow both SockJS and native WebSocket with authentication interceptor
         registry.addEndpoint("/ws-chat")
                 .setAllowedOriginPatterns("*")
+                .addInterceptors(webSocketAuthInterceptor) // ADD THIS
                 .withSockJS();
 
-        // Add native WebSocket endpoint
+        // Add native WebSocket endpoint with authentication interceptor
         registry.addEndpoint("/ws-chat/websocket")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns("*")
+                .addInterceptors(webSocketAuthInterceptor); // ADD THIS
     }
 }
