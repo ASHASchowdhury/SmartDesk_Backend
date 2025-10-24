@@ -24,12 +24,23 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ChatMessageDTO sendMessage(ChatMessageDTO messageDTO, String senderRole, String senderName) {
-        ChatMessage message = new ChatMessage(
-                messageDTO.getContent(),
-                senderRole,
-                senderName,
-                messageDTO.getRoomId()
-        );
+        // Determine message type
+        String messageType = (messageDTO.getImageUrl() != null && !messageDTO.getImageUrl().isEmpty()) ? "IMAGE" : "TEXT";
+
+        // Handle null values safely
+        String imageUrl = messageDTO.getImageUrl() != null ? messageDTO.getImageUrl() : null;
+        String imageName = messageDTO.getImageName() != null ? messageDTO.getImageName() : null;
+        String content = messageDTO.getContent() != null ? messageDTO.getContent() : "";
+
+        ChatMessage message = new ChatMessage();
+        message.setContent(content);
+        message.setSenderRole(senderRole);
+        message.setSenderName(senderName);
+        message.setRoomId(messageDTO.getRoomId());
+        message.setImageUrl(imageUrl);
+        message.setImageName(imageName);
+        message.setMessageType(messageType);
+        message.setTimestamp(java.time.LocalDateTime.now());
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
         ChatMessageDTO savedDTO = convertToDTO(savedMessage);
@@ -60,11 +71,14 @@ public class ChatServiceImpl implements ChatService {
     private ChatMessageDTO convertToDTO(ChatMessage message) {
         ChatMessageDTO dto = new ChatMessageDTO();
         dto.setId(message.getId());
-        dto.setContent(message.getContent());
+        dto.setContent(message.getContent() != null ? message.getContent() : "");
         dto.setRoomId(message.getRoomId());
         dto.setSenderRole(message.getSenderRole());
         dto.setSenderName(message.getSenderName());
         dto.setTimestamp(message.getTimestamp());
+        dto.setImageUrl(message.getImageUrl());
+        dto.setImageName(message.getImageName());
+        dto.setMessageType(message.getMessageType() != null ? message.getMessageType() : "TEXT");
         return dto;
     }
 }

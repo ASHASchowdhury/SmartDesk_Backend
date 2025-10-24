@@ -16,14 +16,29 @@ public class ChatMessage {
     private LocalDateTime timestamp;
     private Long roomId;
 
+    // ADD THESE FIELDS FOR IMAGE SUPPORT
+    private String imageUrl;
+    private String imageName;
+    private String messageType; // "TEXT" or "IMAGE"
+
     public ChatMessage() {}
 
-    public ChatMessage(String content, String senderRole, String senderName, Long roomId) {
+    // Updated constructor with ALL parameters
+    public ChatMessage(String content, String senderRole, String senderName, Long roomId,
+                       String imageUrl, String imageName, String messageType) {
         this.content = content;
         this.senderRole = senderRole;
         this.senderName = senderName;
         this.roomId = roomId;
+        this.imageUrl = imageUrl;
+        this.imageName = imageName;
+        this.messageType = messageType;
         this.timestamp = LocalDateTime.now();
+    }
+
+    // Alternative constructor for text-only messages
+    public ChatMessage(String content, String senderRole, String senderName, Long roomId) {
+        this(content, senderRole, senderName, roomId, null, null, "TEXT");
     }
 
     // Getters and setters
@@ -44,4 +59,14 @@ public class ChatMessage {
 
     public Long getRoomId() { return roomId; }
     public void setRoomId(Long roomId) { this.roomId = roomId; }
+
+    // Image getters and setters
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getImageName() { return imageName; }
+    public void setImageName(String imageName) { this.imageName = imageName; }
+
+    public String getMessageType() { return messageType; }
+    public void setMessageType(String messageType) { this.messageType = messageType; }
 }
