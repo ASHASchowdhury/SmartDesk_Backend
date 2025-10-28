@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -27,9 +28,30 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // ALLOW EVERYTHING FOR ALL ROLES
-                        .anyRequest().permitAll()
+                        // Public endpoints
+                        .requestMatchers("/auth/**", "/ws-chat/**", "/uploads/**", "/api/files/download/**").permitAll()
+
+                        // Employee management
+                        .requestMatchers("/employees/**").hasAnyRole("HR", "DIRECTOR", "CTO")
+
+                        // Department management
+                        .requestMatchers("/departments/**").hasAnyRole("HR", "DIRECTOR", "CTO")
+
+                        // Profile
+                        .requestMatchers("/profile/**").authenticated()
+
+                        // Task management
+                        .requestMatchers("/tasks/**").hasAnyRole("PROJECT_MANAGER", "HR", "DIRECTOR", "CTO")
+
+                        // Chat
+                        .requestMatchers("/chat/**").authenticated()
+
+                        // File upload
+                        .requestMatchers("/api/files/upload").authenticated()
+
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(roleBasedFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -45,7 +67,8 @@ public class SecurityConfig {
                 "http://localhost:8080"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Role", "X-Username"));
+        configuration.setExposedHeaders(Arrays.asList("X-Role", "X-Username"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

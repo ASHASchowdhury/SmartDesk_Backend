@@ -1,10 +1,12 @@
-package com.OfficeManagement.OfficeProject.services;
+package com.OfficeManagement.OfficeProject.serviceImpl;
 
 import com.OfficeManagement.OfficeProject.dtos.DepartmentDTO;
 import com.OfficeManagement.OfficeProject.models.Department;
 import com.OfficeManagement.OfficeProject.models.Employee;
 import com.OfficeManagement.OfficeProject.repository.DepartmentRepository;
+import com.OfficeManagement.OfficeProject.services.DepartmentService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentRepository departmentRepository;
 
@@ -51,9 +54,17 @@ public class DepartmentServiceImpl implements DepartmentService {
         department.setName(departmentDTO.getName());
         department.setDescription(departmentDTO.getDescription());
         department.setCreatedBy(departmentDTO.getCreatedBy());
-        // createdDate will be set manually in save method
 
         return department;
+    }
+
+    private void validateDepartmentDTO(DepartmentDTO departmentDTO) {
+        if (departmentDTO == null) {
+            throw new RuntimeException("Department data cannot be null");
+        }
+        if (departmentDTO.getName() == null || departmentDTO.getName().trim().isEmpty()) {
+            throw new RuntimeException("Department name is required");
+        }
     }
 
     private String generateDeptId() {
@@ -81,6 +92,8 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     public DepartmentDTO saveDepartment(DepartmentDTO departmentDTO) {
+        validateDepartmentDTO(departmentDTO);
+
         try {
             // Set default values
             if (departmentDTO.getCreatedBy() == null || departmentDTO.getCreatedBy().trim().isEmpty()) {
@@ -94,7 +107,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
             Department department = convertToEntity(departmentDTO);
 
-            // MANUALLY SET THE CREATED DATE
+            // Set created date
             department.setCreatedDate(LocalDateTime.now());
 
             Department saved = departmentRepository.save(department);
@@ -106,18 +119,19 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Override
     public DepartmentDTO updateDepartment(Long id, DepartmentDTO departmentDTO) {
+        validateDepartmentDTO(departmentDTO);
+
         try {
             Department existingDepartment = departmentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
 
-            // Only update if provided (allows partial updates)
+            // Update fields if provided
             if (departmentDTO.getName() != null && !departmentDTO.getName().trim().isEmpty()) {
                 existingDepartment.setName(departmentDTO.getName());
             }
             if (departmentDTO.getDescription() != null) {
                 existingDepartment.setDescription(departmentDTO.getDescription());
             }
-            // Don't update deptId in updates typically
 
             Department updated = departmentRepository.save(existingDepartment);
             return convertToDTO(updated);
@@ -127,9 +141,10 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<DepartmentDTO> getAllDepartment() {
         try {
-            return departmentRepository.findAll()
+            return departmentRepository.findAllByOrderById()
                     .stream()
                     .map(this::convertToDTO)
                     .collect(Collectors.toList());
@@ -139,6 +154,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DepartmentDTO getDepartmentById(Long id) {
         try {
             Department department = departmentRepository.findById(id)
@@ -152,9 +168,14 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public void deleteDepartment(Long id) {
         try {
-            if (!departmentRepository.existsById(id)) {
-                throw new RuntimeException("Department not found with id: " + id);
+            Department department = departmentRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
+
+            // Check if department has employees
+            if (department.getEmployees() != null && !department.getEmployees().isEmpty()) {
+                throw new RuntimeException("Cannot delete department: It has employees assigned. Please reassign or delete employees first.");
             }
+
             departmentRepository.deleteById(id);
         } catch (Exception e) {
             throw new RuntimeException("Failed to delete department: " + e.getMessage());

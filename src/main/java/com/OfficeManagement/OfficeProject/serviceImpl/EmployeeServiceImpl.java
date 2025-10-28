@@ -7,12 +7,15 @@ import com.OfficeManagement.OfficeProject.models.Employee;
 import com.OfficeManagement.OfficeProject.repository.DepartmentRepository;
 import com.OfficeManagement.OfficeProject.repository.EmployeeRepository;
 import com.OfficeManagement.OfficeProject.services.EmployeeService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
@@ -23,10 +26,13 @@ public class EmployeeServiceImpl implements EmployeeService {
         this.departmentRepository = departmentRepository;
     }
 
-    // Convert Employee to EmployeeDTO
     private EmployeeDTO convertToDTO(Employee employee) {
+        if (employee == null) {
+            return null;
+        }
+
         DepartmentDTO departmentDTO = null;
-        if (employee != null && employee.getDepartment() != null) {
+        if (employee.getDepartment() != null) {
             Department department = employee.getDepartment();
             departmentDTO = new DepartmentDTO();
             departmentDTO.setId(department.getId());
@@ -48,8 +54,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         );
     }
 
-    // Convert EmployeeDTO to Employee entity
     private Employee convertToEntity(EmployeeDTO employeeDTO) {
+        if (employeeDTO == null) {
+            throw new RuntimeException("Employee data cannot be null");
+        }
+
         Employee employee = new Employee();
         employee.setName(employeeDTO.getName());
         employee.setPhoneNumber(employeeDTO.getPhoneNumber());
@@ -62,7 +71,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         // Map department safely
         if (employeeDTO.getDepartmentDTO() != null && employeeDTO.getDepartmentDTO().getId() != null) {
             Department dept = departmentRepository.findById(employeeDTO.getDepartmentDTO().getId())
-                    .orElseThrow(() -> new RuntimeException("Department not found"));
+                    .orElseThrow(() -> new RuntimeException("Department not found with id: " + employeeDTO.getDepartmentDTO().getId()));
             employee.setDepartment(dept);
         } else {
             throw new RuntimeException("Department must be provided");
@@ -71,93 +80,174 @@ public class EmployeeServiceImpl implements EmployeeService {
         return employee;
     }
 
-    @Override
-    public EmployeeDTO saveEmployee(EmployeeDTO employeeDTO) {
-        // Validation
-        if (employeeRepository.existsByEmail(employeeDTO.getEmail())) {
-            throw new RuntimeException("Email already exists");
+    private void validateEmployeeDTO(EmployeeDTO employeeDTO) {
+        if (employeeDTO == null) {
+            throw new RuntimeException("Employee data cannot be null");
         }
-        if (employeeRepository.existsByPhoneNumber(employeeDTO.getPhoneNumber())) {
-            throw new RuntimeException("Phone number already exists");
+        if (employeeDTO.getName() == null || employeeDTO.getName().trim().isEmpty()) {
+            throw new RuntimeException("Employee name is required");
+        }
+        if (employeeDTO.getEmail() == null || employeeDTO.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("Employee email is required");
+        }
+        if (employeeDTO.getPhoneNumber() == null || employeeDTO.getPhoneNumber().trim().isEmpty()) {
+            throw new RuntimeException("Employee phone number is required");
+        }
+        if (employeeDTO.getDepartmentDTO() == null || employeeDTO.getDepartmentDTO().getId() == null) {
+            throw new RuntimeException("Department is required");
         }
 
-        System.out.println("Creating employee: " + employeeDTO.getName());
-        Employee saved = employeeRepository.save(convertToEntity(employeeDTO));
-        System.out.println("Employee saved with id: " + saved.getId());
-        return convertToDTO(saved);
+        // Validate email format
+        if (!isValidEmail(employeeDTO.getEmail())) {
+            throw new RuntimeException("Invalid email format");
+        }
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
+    }
+
+    @Override
+    public EmployeeDTO saveEmployee(EmployeeDTO employeeDTO) {
+        validateEmployeeDTO(employeeDTO);
+
+        // Check for duplicate email
+        if (employeeRepository.existsByEmail(employeeDTO.getEmail())) {
+            throw new RuntimeException("Email already exists: " + employeeDTO.getEmail());
+        }
+
+        // Check for duplicate phone number
+        if (employeeRepository.existsByPhoneNumber(employeeDTO.getPhoneNumber())) {
+            throw new RuntimeException("Phone number already exists: " + employeeDTO.getPhoneNumber());
+        }
+
+        try {
+            System.out.println("Creating employee: " + employeeDTO.getName());
+            Employee saved = employeeRepository.save(convertToEntity(employeeDTO));
+            System.out.println("Employee saved with id: " + saved.getId());
+            return convertToDTO(saved);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save employee: " + e.getMessage());
+        }
     }
 
     @Override
     public EmployeeDTO updateEmployee(Long id, EmployeeDTO employeeDTO) {
-        Employee prsntEmployee = employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+        validateEmployeeDTO(employeeDTO);
 
-        // Validation (only if email/phone is being changed)
-        if (!prsntEmployee.getEmail().equals(employeeDTO.getEmail()) &&
+        Employee existingEmployee = employeeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
+
+        // Check for duplicate email (if changed)
+        if (!existingEmployee.getEmail().equals(employeeDTO.getEmail()) &&
                 employeeRepository.existsByEmail(employeeDTO.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new RuntimeException("Email already exists: " + employeeDTO.getEmail());
         }
-        if (!prsntEmployee.getPhoneNumber().equals(employeeDTO.getPhoneNumber()) &&
+
+        // Check for duplicate phone number (if changed)
+        if (!existingEmployee.getPhoneNumber().equals(employeeDTO.getPhoneNumber()) &&
                 employeeRepository.existsByPhoneNumber(employeeDTO.getPhoneNumber())) {
-            throw new RuntimeException("Phone number already exists");
+            throw new RuntimeException("Phone number already exists: " + employeeDTO.getPhoneNumber());
         }
 
-        prsntEmployee.setName(employeeDTO.getName());
-        prsntEmployee.setPhoneNumber(employeeDTO.getPhoneNumber());
-        prsntEmployee.setEmail(employeeDTO.getEmail());
-        prsntEmployee.setGender(employeeDTO.getGender());
-        prsntEmployee.setActive(employeeDTO.isActive());
-        prsntEmployee.setBloodGroup(employeeDTO.getBloodGroup());
-        prsntEmployee.setDateOfBirth(employeeDTO.getDateOfBirth());
+        // Update fields
+        existingEmployee.setName(employeeDTO.getName());
+        existingEmployee.setPhoneNumber(employeeDTO.getPhoneNumber());
+        existingEmployee.setEmail(employeeDTO.getEmail());
+        existingEmployee.setGender(employeeDTO.getGender());
+        existingEmployee.setActive(employeeDTO.isActive());
+        existingEmployee.setBloodGroup(employeeDTO.getBloodGroup());
+        existingEmployee.setDateOfBirth(employeeDTO.getDateOfBirth());
 
+        // Update department if provided
         if (employeeDTO.getDepartmentDTO() != null && employeeDTO.getDepartmentDTO().getId() != null) {
             Department dept = departmentRepository.findById(employeeDTO.getDepartmentDTO().getId())
-                    .orElseThrow(() -> new RuntimeException("Department not found"));
-            prsntEmployee.setDepartment(dept);
+                    .orElseThrow(() -> new RuntimeException("Department not found with id: " + employeeDTO.getDepartmentDTO().getId()));
+            existingEmployee.setDepartment(dept);
         }
 
-        Employee updated = employeeRepository.save(prsntEmployee);
-        return convertToDTO(updated);
-    }
-
-    @Override
-    public void deleteEmployee(Long id) {
-        employeeRepository.deleteById(id);
-    }
-
-    @Override
-    public List<EmployeeDTO> getAllEmployee() {
-        return employeeRepository.findAll()
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public EmployeeDTO getEmployeeById(Long id) {
-        Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-        return convertToDTO(employee);
-    }
-
-
-    @Override
-    public EmployeeDTO getEmployeeByUsername(String username) {
-        // In a real app, you would query by username field
-        // For demo, we'll find by email or return first employee
         try {
+            Employee updated = employeeRepository.save(existingEmployee);
+            return convertToDTO(updated);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update employee: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteEmployee(Long id) {
+        try {
+            // Check if employee exists
+            if (!employeeRepository.existsById(id)) {
+                throw new RuntimeException("Employee not found with id: " + id);
+            }
+
+            Employee employee = employeeRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
+
+            System.out.println("Attempting to delete employee: " + employee.getName() + " (ID: " + id + ")");
+
+            // Try to delete
+            employeeRepository.deleteById(id);
+            System.out.println("Employee deleted successfully: " + id);
+
+        } catch (DataIntegrityViolationException e) {
+            System.err.println("Cannot delete employee due to foreign key constraints: " + e.getMessage());
+            throw new RuntimeException("Cannot delete employee: This employee is referenced in other records (e.g., tasks). Please remove those references first.");
+        } catch (Exception e) {
+            System.err.println("Error deleting employee " + id + ": " + e.getMessage());
+            throw new RuntimeException("Error deleting employee: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EmployeeDTO> getAllEmployee() {
+        try {
+            return employeeRepository.findAllByOrderById()
+                    .stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get employees: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EmployeeDTO getEmployeeById(Long id) {
+        try {
+            Employee employee = employeeRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
+            return convertToDTO(employee);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get employee: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EmployeeDTO getEmployeeByUsername(String username) {
+        try {
+            if (username == null || username.trim().isEmpty()) {
+                throw new RuntimeException("Username cannot be empty");
+            }
+
+            // Try to find by email (assuming username is email)
             Employee employee = employeeRepository.findByEmail(username);
             if (employee != null) {
                 return convertToDTO(employee);
             }
 
-            // Fallback: return first employee
+            // Fallback: try to find by name (for demo purposes)
             List<Employee> employees = employeeRepository.findAll();
-            if (!employees.isEmpty()) {
-                return convertToDTO(employees.get(0));
-            }
+            Employee foundEmployee = employees.stream()
+                    .filter(emp -> emp.getName() != null && emp.getName().equalsIgnoreCase(username))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Employee not found with username: " + username));
 
-            throw new RuntimeException("No employees found");
+            return convertToDTO(foundEmployee);
         } catch (Exception e) {
             throw new RuntimeException("Error finding employee by username: " + e.getMessage());
         }

@@ -1,8 +1,8 @@
-// src/main/java/com/OfficeManagement/OfficeProject/controllers/AuthController.java
 package com.OfficeManagement.OfficeProject.controllers;
 
 import com.OfficeManagement.OfficeProject.dtos.AuthRequestDTO;
 import com.OfficeManagement.OfficeProject.dtos.AuthResponseDTO;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,12 +14,26 @@ public class AuthController {
     public AuthResponseDTO login(@RequestBody AuthRequestDTO loginRequest) {
         System.out.println("Login attempt: " + loginRequest.getUsername());
 
+        // Validate input
+        if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
+            return new AuthResponseDTO(false, "Username is required", null, null);
+        }
+        if (loginRequest.getPassword() == null || loginRequest.getPassword().trim().isEmpty()) {
+            return new AuthResponseDTO(false, "Password is required", null, null);
+        }
+
         if (isValidUser(loginRequest.getUsername(), loginRequest.getPassword())) {
             String role = getUserRole(loginRequest.getUsername());
             return new AuthResponseDTO(true, "Login successful", loginRequest.getUsername(), role);
         } else {
             return new AuthResponseDTO(false, "Invalid credentials", null, null);
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout() {
+        // In a real application, you would invalidate the token/session
+        return ResponseEntity.ok("{\"message\": \"Logout successful\"}");
     }
 
     private boolean isValidUser(String username, String password) {
